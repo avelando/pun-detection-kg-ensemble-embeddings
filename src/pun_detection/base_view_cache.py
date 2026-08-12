@@ -56,6 +56,38 @@ def get_base_view_cache_paths(
     )
 
 
+def get_base_view_cache_state(
+    seed: int,
+) -> str:
+    matrices_path, metadata_path = (
+        get_base_view_cache_paths(
+            seed=seed,
+        )
+    )
+
+    matrices_exists = (
+        matrices_path.is_file()
+    )
+
+    metadata_exists = (
+        metadata_path.is_file()
+    )
+
+    if (
+        matrices_exists
+        and metadata_exists
+    ):
+        return "complete"
+
+    if (
+        matrices_exists
+        or metadata_exists
+    ):
+        return "partial"
+
+    return "missing"
+
+
 def base_classifier_config(
     seed: int,
 ) -> dict:
@@ -237,7 +269,7 @@ def save_base_view_cache(
     matrices: BaseViewMatrices,
     train: pd.DataFrame,
     validation: pd.DataFrame,
-    seed: int = EXPERIMENT.primary_seed,
+    seed: int,
     overwrite: bool = False,
 ) -> dict:
     matrices_path, metadata_path = (
@@ -303,7 +335,7 @@ def save_base_view_cache(
 def load_base_view_cache(
     train: pd.DataFrame,
     validation: pd.DataFrame,
-    seed: int = EXPERIMENT.primary_seed,
+    seed: int,
 ) -> BaseViewMatrices:
     matrices_path, metadata_path = (
         get_base_view_cache_paths(

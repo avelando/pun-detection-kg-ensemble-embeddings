@@ -23,6 +23,29 @@ def print_split_summary(name, dataframe):
 def main():
     splits = load_development_splits()
 
+    if not EXPERIMENT.seeds:
+        raise ValueError(
+            "Experiment seeds cannot be empty"
+        )
+
+    if len(
+        EXPERIMENT.seeds
+    ) != len(
+        set(EXPERIMENT.seeds)
+    ):
+        raise ValueError(
+            "Experiment seeds must be unique"
+        )
+
+    if (
+        EXPERIMENT.primary_seed
+        not in EXPERIMENT.seeds
+    ):
+        raise ValueError(
+            "Primary seed must be included "
+            "in experiment seeds"
+        )
+
     print_split_summary("train", splits.train)
     print_split_summary("validation", splits.validation)
 
@@ -31,7 +54,7 @@ def main():
     print(f"seeds={EXPERIMENT.seeds}")
     print(f"primary_metric={EXPERIMENT.primary_metric}")
     print(f"graph_svd_dimensions={GRAPHS.svd_dimensions}")
-    
+
     test_access = (
         "unlocked"
         if test_access_is_unlocked()

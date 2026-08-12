@@ -3,9 +3,6 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from pun_detection.config import (
-    EXPERIMENT,
-)
 from pun_detection.models.embedding_model import (
     fit_embedding_view_model,
     predict_embedding_view_probabilities,
@@ -90,7 +87,7 @@ def validate_base_view_matrix(
 def generate_base_view_matrices(
     train: pd.DataFrame,
     validation: pd.DataFrame,
-    seed: int = EXPERIMENT.primary_seed,
+    seed: int,
 ) -> BaseViewMatrices:
     selected_embedding_model = (
         get_selected_embedding_model(
