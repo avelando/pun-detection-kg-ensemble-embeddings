@@ -19,6 +19,9 @@ from pun_detection.embeddings import (
     get_embedding_config,
     validate_embeddings,
 )
+from pun_detection.fingerprints import (
+    text_dataset_fingerprint,
+)
 
 
 def validate_embedding_split(
@@ -28,35 +31,6 @@ def validate_embedding_split(
         raise ValueError(
             f"Embedding split is not allowed: {split_name}"
         )
-
-
-def dataset_fingerprint(
-    dataframe: pd.DataFrame,
-) -> str:
-    digest = hashlib.sha256()
-
-    for row in dataframe.itertuples(index=False):
-        instance_id = str(
-            getattr(row, DATA.id_column)
-        )
-
-        text = str(
-            getattr(row, DATA.text_column)
-        )
-
-        payload = json.dumps(
-            [instance_id, text],
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-
-        digest.update(
-            payload.encode("utf-8")
-        )
-
-        digest.update(b"\n")
-
-    return digest.hexdigest()
 
 
 def embeddings_fingerprint(
@@ -123,7 +97,7 @@ def build_embedding_metadata(
         "batch_size": config.batch_size,
         "max_seq_length": max_seq_length,
         "dataset_fingerprint": (
-            dataset_fingerprint(
+            text_dataset_fingerprint(
                 dataframe
             )
         ),
@@ -298,7 +272,7 @@ def load_embedding_cache(
         metadata = json.load(file)
 
     expected_dataset_fingerprint = (
-        dataset_fingerprint(
+        text_dataset_fingerprint(
             dataframe
         )
     )

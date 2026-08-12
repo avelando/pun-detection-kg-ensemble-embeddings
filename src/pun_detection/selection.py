@@ -9,7 +9,9 @@ from pun_detection.config import (
     EXPERIMENT,
     PATHS,
 )
-from pun_detection.embedding_cache import dataset_fingerprint
+from pun_detection.fingerprints import (
+    supervised_dataset_fingerprint,
+)
 
 
 def embedding_classifier_config() -> dict:
@@ -18,8 +20,8 @@ def embedding_classifier_config() -> dict:
         "C": BASE_MODELS.logistic_c,
         "solver": BASE_MODELS.logistic_solver,
         "max_iter": BASE_MODELS.logistic_max_iter,
+        "seed": EXPERIMENT.primary_seed,
     }
-
 
 def rank_embedding_models(
     scores: dict[str, dict[str, float]],
@@ -144,11 +146,11 @@ def build_embedding_selection(
         "candidate_models": sorted(
             EMBEDDING_MODELS
         ),
-        "dataset_fingerprints": {
-            "train": dataset_fingerprint(
+        "supervised_dataset_fingerprints": {
+            "train": supervised_dataset_fingerprint(
                 train
             ),
-            "validation": dataset_fingerprint(
+            "validation": supervised_dataset_fingerprint(
                 validation
             ),
         },
@@ -233,16 +235,16 @@ def validate_embedding_selection(
         )
 
     expected_fingerprints = {
-        "train": dataset_fingerprint(
+        "train": supervised_dataset_fingerprint(
             train
         ),
-        "validation": dataset_fingerprint(
+        "validation": supervised_dataset_fingerprint(
             validation
         ),
     }
 
     if selection.get(
-        "dataset_fingerprints"
+        "supervised_dataset_fingerprints"
     ) != expected_fingerprints:
         raise ValueError(
             "Embedding selection dataset fingerprint mismatch"
