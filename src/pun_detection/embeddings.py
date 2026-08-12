@@ -108,6 +108,84 @@ def validate_embeddings(
             )
 
 
+def get_model_inputs(
+    model_name: str,
+    texts: Sequence[str],
+) -> list[str]:
+    config = get_embedding_config(
+        model_name
+    )
+
+    normalized_texts = [
+        str(text)
+        for text in texts
+    ]
+
+    if config.prompt is None:
+        return normalized_texts
+
+    return [
+        f"{config.prompt}{text}"
+        for text in normalized_texts
+    ]
+
+
+def compute_tokenization_statistics(
+    model: SentenceTransformer,
+    model_name: str,
+    texts: Sequence[str],
+) -> dict:
+    model_inputs = get_model_inputs(
+        model_name,
+        texts,
+    )
+
+    encoded = model.tokenizer(
+        model_inputs,
+        padding=False,
+        truncation=False,
+        add_special_tokens=True,
+        return_length=True,
+    )
+
+    lengths = np.asarray(
+        encoded["length"],
+        dtype=np.int32,
+    )
+
+    max_seq_length = int(
+        model.max_seq_length
+    )
+
+    truncated = (
+        lengths > max_seq_length
+    )
+
+    return {
+        "minimum_tokens": int(
+            lengths.min()
+        ),
+        "maximum_tokens": int(
+            lengths.max()
+        ),
+        "mean_tokens": float(
+            lengths.mean()
+        ),
+        "median_tokens": float(
+            np.median(lengths)
+        ),
+        "max_seq_length": (
+            max_seq_length
+        ),
+        "truncated_instances": int(
+            truncated.sum()
+        ),
+        "truncated_fraction": float(
+            truncated.mean()
+        ),
+    }
+    
+
 def encode_texts(
     model: SentenceTransformer,
     model_name: str,
