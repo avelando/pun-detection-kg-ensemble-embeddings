@@ -8,6 +8,7 @@ from sklearn.ensemble import (
 
 from pun_detection.base_views import (
     BASE_VIEW_NAMES,
+    validate_base_view_names,
 )
 from pun_detection.config import (
     BASE_MODELS,
@@ -18,10 +19,11 @@ from pun_detection.models.base import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class StackingMetaModel:
     model_name: str
     classifier: object
+    view_names: tuple[str, ...]
 
 
 def stacking_classifier_config(
@@ -65,6 +67,7 @@ def stacking_classifier_config(
 def validate_stacking_input(
     matrix: np.ndarray,
     matrix_name: str,
+    expected_features: int,
 ) -> np.ndarray:
     matrix = np.asarray(
         matrix,
@@ -76,11 +79,10 @@ def validate_stacking_input(
             f"{matrix_name} must be two-dimensional"
         )
 
-    if matrix.shape[1] != len(
-        BASE_VIEW_NAMES
-    ):
+    if matrix.shape[1] != expected_features:
         raise ValueError(
-            f"{matrix_name} has an invalid number of base views"
+            f"{matrix_name} has an invalid "
+            "number of features"
         )
 
     if not np.isfinite(
@@ -106,10 +108,18 @@ def fit_stacking_meta_model(
     y: np.ndarray,
     model_name: str,
     seed: int,
+    view_names=BASE_VIEW_NAMES,
 ) -> StackingMetaModel:
+    view_names = validate_base_view_names(
+        view_names
+    )
+
     X = validate_stacking_input(
         X,
         "stacking_train",
+        expected_features=len(
+            view_names
+        ),
     )
 
     y = np.asarray(
@@ -181,6 +191,7 @@ def fit_stacking_meta_model(
     return StackingMetaModel(
         model_name=model_name,
         classifier=classifier,
+        view_names=view_names,
     )
 
 
@@ -191,6 +202,9 @@ def predict_stacking_probabilities(
     X = validate_stacking_input(
         X,
         "stacking_prediction",
+        expected_features=len(
+            model.view_names
+        ),
     )
 
     probabilities = (

@@ -38,6 +38,107 @@ BASE_VIEW_NAMES = (
 )
 
 
+BASE_VIEW_INDEX = {
+    view_name: index
+    for index, view_name in enumerate(
+        BASE_VIEW_NAMES
+    )
+}
+
+
+def validate_base_view_names(
+    view_names,
+) -> tuple[str, ...]:
+    normalized = tuple(
+        view_names
+    )
+
+    if not normalized:
+        raise ValueError(
+            "Base view selection cannot be empty"
+        )
+
+    if len(
+        normalized
+    ) != len(
+        set(normalized)
+    ):
+        raise ValueError(
+            "Base view selection contains duplicates"
+        )
+
+    unknown = [
+        view_name
+        for view_name in normalized
+        if view_name not in BASE_VIEW_INDEX
+    ]
+
+    if unknown:
+        raise ValueError(
+            f"Unknown base views: {unknown}"
+        )
+
+    return normalized
+
+
+def select_base_view_matrix(
+    matrix: np.ndarray,
+    view_names,
+) -> np.ndarray:
+    view_names = validate_base_view_names(
+        view_names
+    )
+
+    matrix = np.asarray(
+        matrix,
+        dtype=np.float64,
+    )
+
+    if matrix.ndim != 2:
+        raise ValueError(
+            "Base view matrix must be two-dimensional"
+        )
+
+    if matrix.shape[1] != len(
+        BASE_VIEW_NAMES
+    ):
+        raise ValueError(
+            "Base view matrix has an invalid "
+            "number of columns"
+        )
+
+    indices = [
+        BASE_VIEW_INDEX[
+            view_name
+        ]
+        for view_name in view_names
+    ]
+
+    selected = matrix[
+        :,
+        indices,
+    ]
+
+    if not np.isfinite(
+        selected
+    ).all():
+        raise ValueError(
+            "Selected base view matrix contains "
+            "non-finite values"
+        )
+
+    if (
+        np.any(selected < 0.0)
+        or np.any(selected > 1.0)
+    ):
+        raise ValueError(
+            "Selected base view matrix contains "
+            "invalid probabilities"
+        )
+
+    return selected
+
+
 @dataclass(frozen=True)
 class BaseViewMatrices:
     selected_embedding_model: str
