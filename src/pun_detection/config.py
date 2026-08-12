@@ -24,6 +24,9 @@ class PathConfig:
     models_dir: Path = PROJECT_ROOT / "artifacts" / "models"
     results_dir: Path = PROJECT_ROOT / "results"
     validation_results_dir: Path = PROJECT_ROOT / "results" / "validation"
+    embedding_selection_file: Path = (
+        PROJECT_ROOT / "results" / "validation" / "embedding_selection.json"
+    )
     test_results_dir: Path = PROJECT_ROOT / "results" / "test"
     predictions_dir: Path = PROJECT_ROOT / "results" / "predictions"
     statistics_dir: Path = PROJECT_ROOT / "results" / "statistics"

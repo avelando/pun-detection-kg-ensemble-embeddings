@@ -24,6 +24,10 @@ from pun_detection.models.embedding_model import (
 from pun_detection.pairs import (
     twin_in_reference_mask,
 )
+from pun_detection.selection import (
+    build_embedding_selection,
+    save_embedding_selection,
+)
 
 
 def main():
@@ -58,7 +62,7 @@ def main():
     )
 
     results = {}
-    ranking_data = []
+    selection_scores = {}
 
     for model_name in EMBEDDING_MODELS:
         model = fit_embedding_view_model(
@@ -127,13 +131,12 @@ def main():
             ),
         }
 
-        ranking_data.append(
-            (
-                model_name,
-                overall.macro_f1,
-                overall.accuracy,
-            )
-        )
+        selection_scores[
+            model_name
+        ] = {
+            "macro_f1": overall.macro_f1,
+            "accuracy": overall.accuracy,
+        }
 
         predictions_output[
             f"{model_name}_probability"
@@ -158,61 +161,19 @@ def main():
             f"{no_twin.macro_f1:.6f}"
         )
 
-    ranking_data.sort(
-        key=lambda item: (
-            -item[1],
-            -item[2],
-            item[0],
-        )
+    selection = build_embedding_selection(
+        train=train,
+        validation=validation,
+        scores=selection_scores,
     )
 
-    ranking = []
+    ranking = selection[
+        "ranking"
+    ]
 
-    for rank, (
-        model_name,
-        macro_f1,
-        accuracy,
-    ) in enumerate(
-        ranking_data,
-        start=1,
-    ):
-        ranking.append(
-            {
-                "rank": rank,
-                "model": model_name,
-                "macro_f1": macro_f1,
-                "accuracy": accuracy,
-            }
-        )
-
-    selected_model = ranking[
-        0
-    ]["model"]
-
-    selection = {
-        "selection_split": "validation",
-        "primary_metric": (
-            EXPERIMENT.primary_metric
-        ),
-        "selected_model": (
-            selected_model
-        ),
-        "classifier": {
-            "type": (
-                "logistic_regression"
-            ),
-            "C": (
-                BASE_MODELS.logistic_c
-            ),
-            "solver": (
-                BASE_MODELS.logistic_solver
-            ),
-            "max_iter": (
-                BASE_MODELS.logistic_max_iter
-            ),
-        },
-        "ranking": ranking,
-    }
+    selected_model = selection[
+        "selected_model"
+    ]
 
     PATHS.validation_results_dir.mkdir(
         parents=True,
@@ -227,11 +188,6 @@ def main():
     metrics_path = (
         PATHS.validation_results_dir
         / "embedding_views_metrics.json"
-    )
-
-    selection_path = (
-        PATHS.validation_results_dir
-        / "embedding_selection.json"
     )
 
     predictions_output.to_csv(
@@ -251,17 +207,9 @@ def main():
             sort_keys=True,
         )
 
-    with selection_path.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            selection,
-            file,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        )
+    save_embedding_selection(
+        selection
+    )
 
     print()
 
@@ -298,7 +246,7 @@ def main():
 
     print(
         f"Saved selection to "
-        f"{selection_path}"
+        f"{PATHS.embedding_selection_file}"
     )
 
 
