@@ -65,6 +65,7 @@ class TfidfConfig:
     ngram_min: int = 1
     ngram_max: int = 2
     lowercase: bool = True
+    strip_accents: str | None = "unicode"
     use_portuguese_stopwords: bool = True
 
 
