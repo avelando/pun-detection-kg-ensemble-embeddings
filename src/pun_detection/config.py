@@ -34,6 +34,12 @@ class PathConfig:
     test_results_dir: Path = PROJECT_ROOT / "results" / "test"
     predictions_dir: Path = PROJECT_ROOT / "results" / "predictions"
     statistics_dir: Path = PROJECT_ROOT / "results" / "statistics"
+    fine_tuned_models_dir: Path = (
+        PROJECT_ROOT
+        / "artifacts"
+        / "models"
+        / "bertimbau_finetuned"
+    )
 
 
 @dataclass(frozen=True)
@@ -116,6 +122,26 @@ class StackingConfig:
 
 
 @dataclass(frozen=True)
+class FineTuningConfig:
+    model_id: str = (
+        "neuralmind/bert-base-portuguese-cased"
+    )
+    revision: str = (
+        "26a1ec84a2da79680610baa1a143f341be7beeb8"
+    )
+    tokenizer_vocab_filename: str = "vocab.txt"
+    max_length: int = 128
+    train_batch_size: int = 8
+    evaluation_batch_size: int = 32
+    epochs: int = 3
+    learning_rate: float = 2e-5
+    weight_decay: float = 0.01
+    warmup_ratio: float = 0.1
+    gradient_clip_norm: float = 1.0
+    num_labels: int = 2
+
+
+@dataclass(frozen=True)
 class EmbeddingModelConfig:
     model_id: str
     revision: str
@@ -144,6 +170,7 @@ TFIDF = TfidfConfig()
 BASE_MODELS = BaseModelConfig()
 REFERENCE_BASELINE = ReferenceBaselineConfig()
 STACKING = StackingConfig()
+FINE_TUNING = FineTuningConfig()
 EMBEDDINGS = EmbeddingRuntimeConfig()
 
 EMBEDDING_MODELS = {
