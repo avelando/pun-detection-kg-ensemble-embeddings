@@ -59,7 +59,15 @@ class ExperimentConfig:
     primary_metric: str = "macro_f1"
 
 
+@dataclass(frozen=True)
+class BaseModelConfig:
+    logistic_c: float = 1.0
+    logistic_max_iter: int = 2000
+    logistic_solver: str = "lbfgs"
+
+
 PATHS = PathConfig()
 DATA = DataConfig()
 GRAPHS = GraphConfig()
 EXPERIMENT = ExperimentConfig()
+BASE_MODELS = BaseModelConfig()

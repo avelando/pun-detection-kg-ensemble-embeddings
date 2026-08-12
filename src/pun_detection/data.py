@@ -144,29 +144,35 @@ def validate_instance_boundaries(splits: DatasetSplits) -> None:
         raise ValueError("Validation and test contain repeated instance IDs")
 
 
-def load_dataset_splits() -> DatasetSplits:
-    train = validate_split(
+def load_train_split() -> pd.DataFrame:
+    return validate_split(
         load_jsonl(PATHS.train_file),
         "train",
         DATA.expected_train_size,
     )
 
-    validation = validate_split(
+
+def load_validation_split() -> pd.DataFrame:
+    return validate_split(
         load_jsonl(PATHS.validation_file),
         "validation",
         DATA.expected_validation_size,
     )
 
-    test = validate_split(
+
+def load_test_split() -> pd.DataFrame:
+    return validate_split(
         load_jsonl(PATHS.test_file),
         "test",
         DATA.expected_test_size,
     )
 
+
+def load_dataset_splits() -> DatasetSplits:
     splits = DatasetSplits(
-        train=train,
-        validation=validation,
-        test=test,
+        train=load_train_split(),
+        validation=load_validation_split(),
+        test=load_test_split(),
     )
 
     validate_instance_boundaries(splits)
