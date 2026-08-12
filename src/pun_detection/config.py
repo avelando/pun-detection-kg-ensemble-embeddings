@@ -106,6 +106,12 @@ class ReferenceBaselineConfig:
 
 @dataclass(frozen=True)
 class StackingConfig:
+    primary_views: tuple[str, ...] = (
+        "selected_embedding",
+        "cooccurrence",
+        "ppmi",
+        "pun_context",
+    )
     candidates: tuple[str, ...] = (
         "logistic_regression",
         "random_forest",

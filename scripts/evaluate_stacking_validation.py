@@ -7,6 +7,7 @@ from pun_detection.base_view_cache import (
 )
 from pun_detection.base_views import (
     BASE_VIEW_NAMES,
+    select_base_view_matrix,
 )
 from pun_detection.config import (
     DATA,
@@ -126,17 +127,28 @@ def main():
                     "Unexpected base view column order"
                 )
 
+            X_train = select_base_view_matrix(
+                matrices.train_oof,
+                STACKING.primary_views,
+            )
+
+            X_validation = select_base_view_matrix(
+                matrices.validation,
+                STACKING.primary_views,
+            )
+
             model = fit_stacking_meta_model(
-                X=matrices.train_oof,
+                X=X_train,
                 y=y_train,
                 model_name=model_name,
                 seed=seed,
+                view_names=STACKING.primary_views,
             )
 
             probabilities = (
                 predict_stacking_probabilities(
                     model=model,
-                    X=matrices.validation,
+                    X=X_validation,
                 )
             )
 
@@ -186,10 +198,10 @@ def main():
                 "twin_in_train": twin.as_dict(),
                 "no_twin_in_train": no_twin.as_dict(),
                 "train_oof_fingerprint": array_fingerprint(
-                    matrices.train_oof
+                    X_train
                 ),
                 "validation_matrix_fingerprint": array_fingerprint(
-                    matrices.validation
+                    X_validation
                 ),
                 "probability_fingerprint": array_fingerprint(
                     probabilities
@@ -269,7 +281,7 @@ def main():
     output_metrics = {
         "models": model_results,
         "views": list(
-            BASE_VIEW_NAMES
+            STACKING.primary_views
         ),
         "selected_embedding_model": (
             selected_embedding_model

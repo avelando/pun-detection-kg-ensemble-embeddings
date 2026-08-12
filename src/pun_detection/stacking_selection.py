@@ -9,6 +9,7 @@ from pun_detection.base_view_cache import (
 )
 from pun_detection.base_views import (
     BASE_VIEW_NAMES,
+    select_base_view_matrix,
 )
 from pun_detection.config import (
     BASE_MODELS,
@@ -34,6 +35,12 @@ def stacking_configuration() -> dict:
         "candidates"
     ] = list(
         STACKING.candidates
+    )
+
+    stacking_config[
+        "primary_views"
+    ] = list(
+        STACKING.primary_views
     )
 
     return {
@@ -212,6 +219,18 @@ def base_view_selection_context(
             seed=seed,
         )
 
+        train_primary = select_base_view_matrix(
+            matrices.train_oof,
+            STACKING.primary_views,
+        )
+
+        validation_primary = (
+            select_base_view_matrix(
+                matrices.validation,
+                STACKING.primary_views,
+            )
+        )
+
         selected_embedding_models.add(
             matrices.selected_embedding_model
         )
@@ -220,10 +239,10 @@ def base_view_selection_context(
             str(seed)
         ] = {
             "train_oof": array_fingerprint(
-                matrices.train_oof
+                train_primary
             ),
             "validation": array_fingerprint(
-                matrices.validation
+                validation_primary
             ),
         }
 
@@ -237,7 +256,7 @@ def base_view_selection_context(
 
     return {
         "columns": list(
-            BASE_VIEW_NAMES
+            STACKING.primary_views
         ),
         "selected_embedding_model": next(
             iter(
