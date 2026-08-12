@@ -87,6 +87,27 @@ class ReferenceBaselineConfig:
     voting: str = "soft"
 
 
+@dataclass(frozen=True)
+class EmbeddingModelConfig:
+    model_id: str
+    revision: str
+    expected_dimension: int
+    prompt: str | None
+    normalize_embeddings: bool
+    batch_size: int
+    requires_auth: bool
+
+
+@dataclass(frozen=True)
+class EmbeddingRuntimeConfig:
+    device: str = "cuda"
+    precision: str = "float32"
+    allowed_splits: tuple[str, ...] = (
+        "train",
+        "validation",
+    )
+
+
 PATHS = PathConfig()
 DATA = DataConfig()
 GRAPHS = GraphConfig()
@@ -94,3 +115,50 @@ EXPERIMENT = ExperimentConfig()
 TFIDF = TfidfConfig()
 BASE_MODELS = BaseModelConfig()
 REFERENCE_BASELINE = ReferenceBaselineConfig()
+EMBEDDINGS = EmbeddingRuntimeConfig()
+
+EMBEDDING_MODELS = {
+    "embeddinggemma": EmbeddingModelConfig(
+        model_id="google/embeddinggemma-300m",
+        revision="57c266a740f537b4dc058e1b0cda161fd15afa75",
+        expected_dimension=768,
+        prompt="task: classification | query: ",
+        normalize_embeddings=True,
+        batch_size=16,
+        requires_auth=True,
+    ),
+    "e5": EmbeddingModelConfig(
+        model_id="intfloat/multilingual-e5-large",
+        revision="3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+        expected_dimension=1024,
+        prompt="query: ",
+        normalize_embeddings=True,
+        batch_size=16,
+        requires_auth=False,
+    ),
+    "qwen": EmbeddingModelConfig(
+        model_id="Qwen/Qwen3-Embedding-0.6B",
+        revision="97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        expected_dimension=1024,
+        prompt=(
+            "Instruct: Represent a Portuguese text for binary "
+            "classification of whether it contains a pun.\n"
+            "Query:"
+        ),
+        normalize_embeddings=True,
+        batch_size=8,
+        requires_auth=False,
+    ),
+    "paraphrase": EmbeddingModelConfig(
+        model_id=(
+            "sentence-transformers/"
+            "paraphrase-multilingual-mpnet-base-v2"
+        ),
+        revision="4328cf26390c98c5e3c738b4460a05b95f4911f5",
+        expected_dimension=768,
+        prompt=None,
+        normalize_embeddings=True,
+        batch_size=32,
+        requires_auth=False,
+    ),
+}
