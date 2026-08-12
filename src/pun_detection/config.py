@@ -28,6 +28,9 @@ class PathConfig:
     embedding_selection_file: Path = (
         PROJECT_ROOT / "results" / "validation" / "embedding_selection.json"
     )
+    stacking_selection_file: Path = (
+        PROJECT_ROOT / "results" / "validation" / "stacking_selection.json"
+    )
     test_results_dir: Path = PROJECT_ROOT / "results" / "test"
     predictions_dir: Path = PROJECT_ROOT / "results" / "predictions"
     statistics_dir: Path = PROJECT_ROOT / "results" / "statistics"
@@ -96,6 +99,23 @@ class ReferenceBaselineConfig:
 
 
 @dataclass(frozen=True)
+class StackingConfig:
+    candidates: tuple[str, ...] = (
+        "logistic_regression",
+        "random_forest",
+        "gradient_boosting",
+    )
+    random_forest_estimators: int = 100
+    random_forest_criterion: str = "gini"
+    random_forest_max_depth: int | None = None
+    random_forest_max_features: str | None = "sqrt"
+    gradient_boosting_estimators: int = 100
+    gradient_boosting_learning_rate: float = 0.1
+    gradient_boosting_max_depth: int = 3
+    gradient_boosting_subsample: float = 1.0
+
+
+@dataclass(frozen=True)
 class EmbeddingModelConfig:
     model_id: str
     revision: str
@@ -123,6 +143,7 @@ EXPERIMENT = ExperimentConfig()
 TFIDF = TfidfConfig()
 BASE_MODELS = BaseModelConfig()
 REFERENCE_BASELINE = ReferenceBaselineConfig()
+STACKING = StackingConfig()
 EMBEDDINGS = EmbeddingRuntimeConfig()
 
 EMBEDDING_MODELS = {
