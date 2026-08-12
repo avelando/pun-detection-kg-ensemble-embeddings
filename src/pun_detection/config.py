@@ -61,6 +61,14 @@ class ExperimentConfig:
 
 
 @dataclass(frozen=True)
+class TfidfConfig:
+    ngram_min: int = 1
+    ngram_max: int = 2
+    lowercase: bool = True
+    use_portuguese_stopwords: bool = True
+
+
+@dataclass(frozen=True)
 class BaseModelConfig:
     logistic_c: float = 1.0
     logistic_max_iter: int = 2000
@@ -71,4 +79,5 @@ PATHS = PathConfig()
 DATA = DataConfig()
 GRAPHS = GraphConfig()
 EXPERIMENT = ExperimentConfig()
+TFIDF = TfidfConfig()
 BASE_MODELS = BaseModelConfig()
