@@ -1,15 +1,20 @@
 import numpy as np
 
 from pun_detection.base_views import (
-    BASE_VIEW_NAMES,
     validate_base_view_names,
+)
+from pun_detection.config import (
+    STACKING,
 )
 
 
 def soft_voting_probabilities(
     view_matrix: np.ndarray,
-    view_names=BASE_VIEW_NAMES,
+    view_names=None,
 ) -> np.ndarray:
+    if view_names is None:
+        view_names = STACKING.primary_views
+
     view_names = validate_base_view_names(
         view_names
     )

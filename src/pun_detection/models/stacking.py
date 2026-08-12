@@ -7,7 +7,6 @@ from sklearn.ensemble import (
 )
 
 from pun_detection.base_views import (
-    BASE_VIEW_NAMES,
     validate_base_view_names,
 )
 from pun_detection.config import (
@@ -108,8 +107,11 @@ def fit_stacking_meta_model(
     y: np.ndarray,
     model_name: str,
     seed: int,
-    view_names=BASE_VIEW_NAMES,
+    view_names=None,
 ) -> StackingMetaModel:
+    if view_names is None:
+        view_names = STACKING.primary_views
+
     view_names = validate_base_view_names(
         view_names
     )
