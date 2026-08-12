@@ -105,3 +105,71 @@ def compute_binary_metrics(
         ),
         samples=len(y_true),
     )
+
+
+def summarize_metric_values(
+    values: list[float],
+) -> dict[str, float]:
+    array = np.asarray(
+        values,
+        dtype=np.float64,
+    )
+
+    if array.size == 0:
+        raise ValueError(
+            "Metric values cannot be empty"
+        )
+
+    standard_deviation = (
+        float(
+            np.std(
+                array,
+                ddof=1,
+            )
+        )
+        if array.size > 1
+        else 0.0
+    )
+
+    return {
+        "mean": float(array.mean()),
+        "std": standard_deviation,
+        "min": float(array.min()),
+        "max": float(array.max()),
+    }
+
+
+def summarize_binary_metrics(
+    metrics: list[BinaryMetrics],
+) -> dict[str, dict[str, float]]:
+    if not metrics:
+        raise ValueError(
+            "Metrics cannot be empty"
+        )
+
+    return {
+        "accuracy": summarize_metric_values(
+            [
+                metric.accuracy
+                for metric in metrics
+            ]
+        ),
+        "macro_precision": summarize_metric_values(
+            [
+                metric.macro_precision
+                for metric in metrics
+            ]
+        ),
+        "macro_recall": summarize_metric_values(
+            [
+                metric.macro_recall
+                for metric in metrics
+            ]
+        ),
+        "macro_f1": summarize_metric_values(
+            [
+                metric.macro_f1
+                for metric in metrics
+            ]
+        ),
+    }

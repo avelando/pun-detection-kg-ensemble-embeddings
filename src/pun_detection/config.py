@@ -76,9 +76,21 @@ class BaseModelConfig:
     logistic_solver: str = "lbfgs"
 
 
+@dataclass(frozen=True)
+class ReferenceBaselineConfig:
+    rf_estimators: int = 100
+    rf_criterion: str = "entropy"
+    rf_max_depth: int = 15
+    lr_max_iter: int = 2000
+    svm_c: float = 1.0
+    svm_kernel: str = "rbf"
+    voting: str = "soft"
+
+
 PATHS = PathConfig()
 DATA = DataConfig()
 GRAPHS = GraphConfig()
 EXPERIMENT = ExperimentConfig()
 TFIDF = TfidfConfig()
 BASE_MODELS = BaseModelConfig()
+REFERENCE_BASELINE = ReferenceBaselineConfig()
