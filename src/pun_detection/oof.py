@@ -17,7 +17,7 @@ class OOFSplit:
 def create_oof_splits(
     dataframe: pd.DataFrame,
     folds: int = EXPERIMENT.oof_folds,
-    seed: int = EXPERIMENT.primary_seed,
+    seed: int = EXPERIMENT.oof_split_seed,
 ) -> list[OOFSplit]:
     y = dataframe[DATA.label_column].astype(int).to_numpy()
     groups = dataframe["pair_id"].astype(str).to_numpy()
