@@ -1,66 +1,39 @@
 import json
 
-import numpy as np
 import pandas as pd
 
+from pun_detection.base_view_cache import (
+    load_base_view_cache,
+)
+from pun_detection.base_views import (
+    BASE_VIEW_NAMES,
+)
 from pun_detection.config import (
     DATA,
     EXPERIMENT,
     PATHS,
 )
 from pun_detection.data import (
-    load_train_split,
-    load_validation_split,
+    load_development_splits,
 )
 from pun_detection.evaluation import (
     compute_binary_metrics,
     probabilities_to_predictions,
+    summarize_binary_metrics,
 )
-from pun_detection.models.graph_model import (
-    fit_graph_view_model,
-    predict_graph_view_probabilities,
-)
-from pun_detection.models.tfidf_model import (
-    fit_tfidf_view_model,
-    predict_tfidf_view_probabilities,
+from pun_detection.fingerprints import (
+    array_fingerprint,
 )
 from pun_detection.pairs import (
     twin_in_reference_mask,
 )
 
 
-def evaluate_subset(
-    y_true: np.ndarray,
-    probabilities: np.ndarray,
-    mask: np.ndarray,
-):
-    return compute_binary_metrics(
-        y_true[mask],
-        probabilities[mask],
-    )
-
-
-def print_metrics(
-    model_name: str,
-    subset_name: str,
-    metrics,
-) -> None:
-    print(
-        f"{model_name}/{subset_name}: "
-        f"samples={metrics.samples}, "
-        f"accuracy={metrics.accuracy:.6f}, "
-        f"macro_precision="
-        f"{metrics.macro_precision:.6f}, "
-        f"macro_recall="
-        f"{metrics.macro_recall:.6f}, "
-        f"macro_f1="
-        f"{metrics.macro_f1:.6f}"
-    )
-
-
 def main():
-    train = load_train_split()
-    validation = load_validation_split()
+    splits = load_development_splits()
+
+    train = splits.train
+    validation = splits.validation
 
     y_validation = validation[
         DATA.label_column
@@ -73,88 +46,7 @@ def main():
 
     no_twin_mask = ~twin_mask
 
-    print(
-        f"validation_rows={len(validation)}, "
-        f"twin_in_train={int(twin_mask.sum())}, "
-        f"no_twin_in_train="
-        f"{int(no_twin_mask.sum())}"
-    )
-
-    tfidf_model = fit_tfidf_view_model(
-        train=train,
-        seed=EXPERIMENT.primary_seed,
-    )
-
-    probabilities = {
-        "tfidf": (
-            predict_tfidf_view_probabilities(
-                tfidf_model,
-                validation,
-            )
-        )
-    }
-
-    graph_model = fit_graph_view_model(
-        train=train,
-        seed=EXPERIMENT.primary_seed,
-    )
-
-    probabilities.update(
-        predict_graph_view_probabilities(
-            graph_model,
-            validation,
-        )
-    )
-
-    metrics = {}
-
-    for model_name, model_probabilities in (
-        probabilities.items()
-    ):
-        overall = compute_binary_metrics(
-            y_validation,
-            model_probabilities,
-        )
-
-        twin = evaluate_subset(
-            y_validation,
-            model_probabilities,
-            twin_mask,
-        )
-
-        no_twin = evaluate_subset(
-            y_validation,
-            model_probabilities,
-            no_twin_mask,
-        )
-
-        metrics[model_name] = {
-            "overall": overall.as_dict(),
-            "twin_in_train": twin.as_dict(),
-            "no_twin_in_train": (
-                no_twin.as_dict()
-            ),
-        }
-
-        print_metrics(
-            model_name,
-            "overall",
-            overall,
-        )
-
-        print_metrics(
-            model_name,
-            "twin_in_train",
-            twin,
-        )
-
-        print_metrics(
-            model_name,
-            "no_twin_in_train",
-            no_twin,
-        )
-
-    output = pd.DataFrame(
+    prediction_output = pd.DataFrame(
         {
             "id": validation[
                 DATA.id_column
@@ -170,18 +62,175 @@ def main():
         }
     )
 
-    for model_name, model_probabilities in (
-        probabilities.items()
-    ):
-        output[
-            f"{model_name}_probability"
-        ] = model_probabilities
+    metric_runs = {
+        view_name: {
+            "overall": [],
+            "twin_in_train": [],
+            "no_twin_in_train": [],
+        }
+        for view_name in BASE_VIEW_NAMES
+    }
 
-        output[
-            f"{model_name}_prediction"
-        ] = probabilities_to_predictions(
-            model_probabilities
+    per_seed = {}
+    selected_embedding_models = set()
+
+    for seed in EXPERIMENT.seeds:
+        matrices = load_base_view_cache(
+            train=train,
+            validation=validation,
+            seed=seed,
         )
+
+        selected_embedding_models.add(
+            matrices.selected_embedding_model
+        )
+
+        if matrices.columns != BASE_VIEW_NAMES:
+            raise ValueError(
+                "Unexpected base view column order"
+            )
+
+        seed_results = {}
+
+        for column_index, view_name in enumerate(
+            BASE_VIEW_NAMES
+        ):
+            probabilities = matrices.validation[
+                :,
+                column_index,
+            ]
+
+            overall = compute_binary_metrics(
+                y_validation,
+                probabilities,
+            )
+
+            twin = compute_binary_metrics(
+                y_validation[twin_mask],
+                probabilities[twin_mask],
+            )
+
+            no_twin = compute_binary_metrics(
+                y_validation[no_twin_mask],
+                probabilities[no_twin_mask],
+            )
+
+            metric_runs[
+                view_name
+            ][
+                "overall"
+            ].append(
+                overall
+            )
+
+            metric_runs[
+                view_name
+            ][
+                "twin_in_train"
+            ].append(
+                twin
+            )
+
+            metric_runs[
+                view_name
+            ][
+                "no_twin_in_train"
+            ].append(
+                no_twin
+            )
+
+            seed_results[
+                view_name
+            ] = {
+                "overall": overall.as_dict(),
+                "twin_in_train": twin.as_dict(),
+                "no_twin_in_train": no_twin.as_dict(),
+                "probability_fingerprint": array_fingerprint(
+                    probabilities
+                ),
+            }
+
+            prediction_output[
+                f"{view_name}_seed_{seed}_probability"
+            ] = probabilities
+
+            prediction_output[
+                f"{view_name}_seed_{seed}_prediction"
+            ] = probabilities_to_predictions(
+                probabilities
+            )
+
+            print(
+                f"view={view_name}, "
+                f"seed={seed}, "
+                f"accuracy={overall.accuracy:.6f}, "
+                f"macro_f1={overall.macro_f1:.6f}, "
+                f"twin_macro_f1={twin.macro_f1:.6f}, "
+                f"no_twin_macro_f1={no_twin.macro_f1:.6f}"
+            )
+
+        per_seed[
+            str(seed)
+        ] = {
+            "validation_matrix_fingerprint": array_fingerprint(
+                matrices.validation
+            ),
+            "views": seed_results,
+        }
+
+    if len(
+        selected_embedding_models
+    ) != 1:
+        raise ValueError(
+            "Base view caches use different selected embedding models"
+        )
+
+    selected_embedding_model = next(
+        iter(
+            selected_embedding_models
+        )
+    )
+
+    summary = {}
+
+    for view_name in BASE_VIEW_NAMES:
+        summary[
+            view_name
+        ] = {
+            "overall": summarize_binary_metrics(
+                metric_runs[
+                    view_name
+                ][
+                    "overall"
+                ]
+            ),
+            "twin_in_train": summarize_binary_metrics(
+                metric_runs[
+                    view_name
+                ][
+                    "twin_in_train"
+                ]
+            ),
+            "no_twin_in_train": summarize_binary_metrics(
+                metric_runs[
+                    view_name
+                ][
+                    "no_twin_in_train"
+                ]
+            ),
+        }
+
+    output_metrics = {
+        "views": list(
+            BASE_VIEW_NAMES
+        ),
+        "selected_embedding_model": selected_embedding_model,
+        "seeds": list(
+            EXPERIMENT.seeds
+        ),
+        "per_seed": per_seed,
+        "summary": summary,
+    }
 
     PATHS.validation_results_dir.mkdir(
         parents=True,
@@ -190,23 +239,15 @@ def main():
 
     predictions_path = (
         PATHS.validation_results_dir
-        / (
-            "base_views_"
-            f"seed_{EXPERIMENT.primary_seed}_"
-            "predictions.csv"
-        )
+        / "base_views_predictions.csv"
     )
 
     metrics_path = (
         PATHS.validation_results_dir
-        / (
-            "base_views_"
-            f"seed_{EXPERIMENT.primary_seed}_"
-            "metrics.json"
-        )
+        / "base_views_metrics.json"
     )
 
-    output.to_csv(
+    prediction_output.to_csv(
         predictions_path,
         index=False,
     )
@@ -216,20 +257,45 @@ def main():
         encoding="utf-8",
     ) as file:
         json.dump(
-            metrics,
+            output_metrics,
             file,
+            ensure_ascii=False,
             indent=2,
             sort_keys=True,
         )
 
+    print()
+
     print(
-        f"Saved predictions to "
-        f"{predictions_path}"
+        f"selected_embedding_model="
+        f"{selected_embedding_model}"
+    )
+
+    for view_name in BASE_VIEW_NAMES:
+        overall_summary = summary[
+            view_name
+        ][
+            "overall"
+        ]
+
+        print(
+            f"view={view_name}, "
+            f"accuracy_mean="
+            f"{overall_summary['accuracy']['mean']:.6f}, "
+            f"accuracy_std="
+            f"{overall_summary['accuracy']['std']:.6f}, "
+            f"macro_f1_mean="
+            f"{overall_summary['macro_f1']['mean']:.6f}, "
+            f"macro_f1_std="
+            f"{overall_summary['macro_f1']['std']:.6f}"
+        )
+
+    print(
+        f"Saved predictions to {predictions_path}"
     )
 
     print(
-        f"Saved metrics to "
-        f"{metrics_path}"
+        f"Saved metrics to {metrics_path}"
     )
 
 
