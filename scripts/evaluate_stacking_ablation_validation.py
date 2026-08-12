@@ -98,21 +98,19 @@ def main():
         )
     )
 
-    prediction_output = pd.DataFrame(
-        {
-            "id": validation[
-                DATA.id_column
-            ].astype(str),
-            "pair_id": validation[
-                "pair_id"
-            ].astype(str),
-            "variant": validation[
-                "variant"
-            ].astype(str),
-            "y_true": y_validation,
-            "twin_in_train": twin_mask,
-        }
-    )
+    prediction_columns = {
+        "id": validation[
+            DATA.id_column
+        ].astype(str).to_numpy(),
+        "pair_id": validation[
+            "pair_id"
+        ].astype(str).to_numpy(),
+        "variant": validation[
+            "variant"
+        ].astype(str).to_numpy(),
+        "y_true": y_validation,
+        "twin_in_train": twin_mask,
+    }
 
     configuration_results = {}
 
@@ -206,12 +204,12 @@ def main():
                 ),
             }
 
-            prediction_output[
+            prediction_columns[
                 f"{configuration_name}_"
                 f"seed_{seed}_probability"
             ] = probabilities
 
-            prediction_output[
+            prediction_columns[
                 f"{configuration_name}_"
                 f"seed_{seed}_prediction"
             ] = probabilities_to_predictions(
@@ -298,6 +296,10 @@ def main():
     metrics_path = (
         PATHS.validation_results_dir
         / "stacking_ablation_metrics.json"
+    )
+
+    prediction_output = pd.DataFrame(
+        prediction_columns
     )
 
     prediction_output.to_csv(
