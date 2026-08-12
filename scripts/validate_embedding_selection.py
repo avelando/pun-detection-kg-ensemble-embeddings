@@ -24,16 +24,30 @@ def main():
         f"{selection['primary_metric']}"
     )
 
+    print(
+        f"aggregation="
+        f"{selection['aggregation']}"
+    )
+
+    print(
+        f"selection_seeds="
+        f"{tuple(selection['selection_seeds'])}"
+    )
+
     for item in selection[
         "ranking"
     ]:
         print(
             f"rank={item['rank']}, "
             f"model={item['model']}, "
-            f"macro_f1="
-            f"{item['macro_f1']:.6f}, "
-            f"accuracy="
-            f"{item['accuracy']:.6f}"
+            f"macro_f1_mean="
+            f"{item['macro_f1']['mean']:.6f}, "
+            f"macro_f1_std="
+            f"{item['macro_f1']['std']:.6f}, "
+            f"macro_f1_min="
+            f"{item['macro_f1']['min']:.6f}, "
+            f"macro_f1_max="
+            f"{item['macro_f1']['max']:.6f}"
         )
 
     print(

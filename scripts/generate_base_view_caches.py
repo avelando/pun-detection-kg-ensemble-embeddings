@@ -80,11 +80,34 @@ def process_seed(
         state == "complete"
         and not force
     ):
-        matrices = load_base_view_cache(
-            train=train,
-            validation=validation,
-            seed=seed,
-        )
+        try:
+            matrices = load_base_view_cache(
+                train=train,
+                validation=validation,
+                seed=seed,
+            )
+        except ValueError:
+            matrices = generate_base_view_matrices(
+                train=train,
+                validation=validation,
+                seed=seed,
+            )
+
+            save_base_view_cache(
+                matrices=matrices,
+                train=train,
+                validation=validation,
+                seed=seed,
+                overwrite=True,
+            )
+
+            print_cache_summary(
+                seed=seed,
+                status="regenerated_stale",
+                matrices=matrices,
+            )
+
+            return
 
         print_cache_summary(
             seed=seed,

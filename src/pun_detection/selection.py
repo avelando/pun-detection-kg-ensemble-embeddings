@@ -12,6 +12,9 @@ from pun_detection.config import (
 from pun_detection.fingerprints import (
     supervised_dataset_fingerprint,
 )
+from pun_detection.evaluation import (
+    summarize_metric_values,
+)
 
 
 def embedding_classifier_config() -> dict:
@@ -20,11 +23,11 @@ def embedding_classifier_config() -> dict:
         "C": BASE_MODELS.logistic_c,
         "solver": BASE_MODELS.logistic_solver,
         "max_iter": BASE_MODELS.logistic_max_iter,
-        "seed": EXPERIMENT.primary_seed,
     }
 
+
 def rank_embedding_models(
-    scores: dict[str, dict[str, float]],
+    scores: dict[str, list[dict]],
 ) -> list[dict]:
     expected_models = set(
         EMBEDDING_MODELS
@@ -53,54 +56,147 @@ def rank_embedding_models(
             f"unexpected={unexpected_models}"
         )
 
+    expected_seeds = tuple(
+        EXPERIMENT.seeds
+    )
+
     ranking_data = []
 
-    for model_name, model_scores in scores.items():
-        macro_f1 = float(
-            model_scores["macro_f1"]
-        )
-
-        accuracy = float(
-            model_scores["accuracy"]
-        )
-
-        if not math.isfinite(
-            macro_f1
+    for model_name, model_runs in scores.items():
+        if not isinstance(
+            model_runs,
+            list,
         ):
             raise ValueError(
-                f"Non-finite Macro-F1 for {model_name}"
+                f"Embedding runs must be a list for "
+                f"{model_name}"
             )
 
-        if not math.isfinite(
-            accuracy
+        normalized_runs = []
+
+        seen_seeds = set()
+
+        for run in model_runs:
+            try:
+                seed = int(
+                    run["seed"]
+                )
+
+                macro_f1 = float(
+                    run["macro_f1"]
+                )
+
+                accuracy = float(
+                    run["accuracy"]
+                )
+            except (
+                KeyError,
+                TypeError,
+                ValueError,
+            ) as error:
+                raise ValueError(
+                    f"Invalid embedding run for "
+                    f"{model_name}"
+                ) from error
+
+            if seed in seen_seeds:
+                raise ValueError(
+                    f"Duplicated seed {seed} for "
+                    f"{model_name}"
+                )
+
+            seen_seeds.add(
+                seed
+            )
+
+            if not math.isfinite(
+                macro_f1
+            ):
+                raise ValueError(
+                    f"Non-finite Macro-F1 for "
+                    f"{model_name}, seed={seed}"
+                )
+
+            if not math.isfinite(
+                accuracy
+            ):
+                raise ValueError(
+                    f"Non-finite accuracy for "
+                    f"{model_name}, seed={seed}"
+                )
+
+            if not 0.0 <= macro_f1 <= 1.0:
+                raise ValueError(
+                    f"Invalid Macro-F1 for "
+                    f"{model_name}, seed={seed}: "
+                    f"{macro_f1}"
+                )
+
+            if not 0.0 <= accuracy <= 1.0:
+                raise ValueError(
+                    f"Invalid accuracy for "
+                    f"{model_name}, seed={seed}: "
+                    f"{accuracy}"
+                )
+
+            normalized_runs.append(
+                {
+                    "seed": seed,
+                    "macro_f1": macro_f1,
+                    "accuracy": accuracy,
+                }
+            )
+
+        normalized_runs.sort(
+            key=lambda item: item["seed"]
+        )
+
+        actual_seeds = tuple(
+            item["seed"]
+            for item in normalized_runs
+        )
+
+        if actual_seeds != tuple(
+            sorted(
+                expected_seeds
+            )
         ):
             raise ValueError(
-                f"Non-finite accuracy for {model_name}"
+                f"Embedding selection seeds mismatch "
+                f"for {model_name}: "
+                f"{actual_seeds}"
             )
 
-        if not 0.0 <= macro_f1 <= 1.0:
-            raise ValueError(
-                f"Invalid Macro-F1 for {model_name}: "
-                f"{macro_f1}"
+        macro_f1_summary = (
+            summarize_metric_values(
+                [
+                    item["macro_f1"]
+                    for item in normalized_runs
+                ]
             )
+        )
 
-        if not 0.0 <= accuracy <= 1.0:
-            raise ValueError(
-                f"Invalid accuracy for {model_name}: "
-                f"{accuracy}"
+        accuracy_summary = (
+            summarize_metric_values(
+                [
+                    item["accuracy"]
+                    for item in normalized_runs
+                ]
             )
+        )
 
         ranking_data.append(
             (
                 model_name,
-                macro_f1,
-                accuracy,
+                macro_f1_summary,
+                accuracy_summary,
+                normalized_runs,
             )
         )
 
     ranking_data.sort(
         key=lambda item: (
-            -item[1],
+            -item[1]["mean"],
             item[0],
         )
     )
@@ -109,13 +205,15 @@ def rank_embedding_models(
         {
             "rank": rank,
             "model": model_name,
-            "macro_f1": macro_f1,
-            "accuracy": accuracy,
+            "macro_f1": macro_f1_summary,
+            "accuracy": accuracy_summary,
+            "runs": normalized_runs,
         }
         for rank, (
             model_name,
-            macro_f1,
-            accuracy,
+            macro_f1_summary,
+            accuracy_summary,
+            normalized_runs,
         ) in enumerate(
             ranking_data,
             start=1,
@@ -126,7 +224,7 @@ def rank_embedding_models(
 def build_embedding_selection(
     train: pd.DataFrame,
     validation: pd.DataFrame,
-    scores: dict[str, dict[str, float]],
+    scores: dict[str, list[dict]],
 ) -> dict:
     if EXPERIMENT.primary_metric != "macro_f1":
         raise ValueError(
@@ -142,6 +240,11 @@ def build_embedding_selection(
         "selection_type": "embedding_model",
         "selection_split": "validation",
         "primary_metric": EXPERIMENT.primary_metric,
+        "aggregation": "mean",
+        "selection_seeds": list(
+            EXPERIMENT.seeds
+        ),
+        "tie_breaker": "model_name",
         "selected_model": ranking[0]["model"],
         "candidate_models": sorted(
             EMBEDDING_MODELS
@@ -210,6 +313,29 @@ def validate_embedding_selection(
         raise ValueError(
             "Embedding selection currently requires "
             "primary_metric='macro_f1'"
+        )
+
+    if selection.get(
+        "aggregation"
+    ) != "mean":
+        raise ValueError(
+            "Embedding selection aggregation mismatch"
+        )
+
+    if selection.get(
+        "selection_seeds"
+    ) != list(
+        EXPERIMENT.seeds
+    ):
+        raise ValueError(
+            "Embedding selection seeds mismatch"
+        )
+
+    if selection.get(
+        "tie_breaker"
+    ) != "model_name":
+        raise ValueError(
+            "Embedding selection tie breaker mismatch"
         )
 
     expected_candidates = sorted(
@@ -309,13 +435,22 @@ def validate_embedding_selection(
             )
 
         try:
-            macro_f1 = float(
-                item["macro_f1"]
+            runs = item.get(
+                "runs"
             )
 
-            accuracy = float(
-                item["accuracy"]
-            )
+            if not isinstance(
+                runs,
+                list,
+            ):
+                raise ValueError(
+                    f"Missing embedding runs for "
+                    f"{model_name}"
+                )
+
+            scores[
+                model_name
+            ] = runs
         except (
             KeyError,
             TypeError,
@@ -324,11 +459,6 @@ def validate_embedding_selection(
             raise ValueError(
                 f"Invalid ranking metrics for {model_name}"
             ) from error
-
-        scores[model_name] = {
-            "macro_f1": macro_f1,
-            "accuracy": accuracy,
-        }
 
     expected_ranking = (
         rank_embedding_models(
