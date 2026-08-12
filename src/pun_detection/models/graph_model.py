@@ -12,7 +12,7 @@ from pun_detection.graphs.features import (
     fit_graph_encoder_set,
     transform_graph_encoder_set,
 )
-from pun_detection.models.base import make_logistic_classifier
+from pun_detection.models.base import fit_logistic_classifier
 
 
 GRAPH_NAMES = (
@@ -67,13 +67,10 @@ def fit_graph_view_model(
             X_train
         )
 
-        classifier = make_logistic_classifier(
+        classifier = fit_logistic_classifier(
+            X=X_train_scaled,
+            y=y_train,
             seed=seed,
-        )
-
-        classifier.fit(
-            X_train_scaled,
-            y_train,
         )
 
         scalers[graph_name] = scaler

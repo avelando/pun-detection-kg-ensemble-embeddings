@@ -6,7 +6,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from pun_detection.config import DATA, EXPERIMENT
-from pun_detection.models.base import make_logistic_classifier
+from pun_detection.models.base import fit_logistic_classifier
 from pun_detection.text.features import make_tfidf_vectorizer
 
 
@@ -32,13 +32,10 @@ def fit_tfidf_view_model(
         DATA.label_column
     ].astype(int).to_numpy()
 
-    classifier = make_logistic_classifier(
+    classifier = fit_logistic_classifier(
+        X=X_train,
+        y=y_train,
         seed=seed,
-    )
-
-    classifier.fit(
-        X_train,
-        y_train,
     )
 
     return TfidfViewModel(

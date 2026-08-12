@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 
 from pun_detection.config import (
@@ -17,7 +15,7 @@ from pun_detection.embeddings import (
     get_embedding_config,
 )
 from pun_detection.models.base import (
-    make_logistic_classifier,
+    fit_logistic_classifier,
 )
 
 
@@ -47,20 +45,11 @@ def fit_embedding_view_model(
         DATA.label_column
     ].astype(int).to_numpy()
 
-    classifier = make_logistic_classifier(
+    classifier = fit_logistic_classifier(
+        X=X_train,
+        y=y_train,
         seed=seed,
     )
-
-    with warnings.catch_warnings():
-        warnings.simplefilter(
-            "error",
-            ConvergenceWarning,
-        )
-
-        classifier.fit(
-            X_train,
-            y_train,
-        )
 
     iterations = int(
         np.max(
