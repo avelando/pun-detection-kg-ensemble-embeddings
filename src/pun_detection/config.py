@@ -13,6 +13,10 @@ class PathConfig:
     validation_file: Path = PROJECT_ROOT / "corpus" / "validation.jsonl"
     test_file: Path = PROJECT_ROOT / "corpus" / "test.jsonl"
     artifacts_dir: Path = PROJECT_ROOT / "artifacts"
+    experiment_state_dir: Path = PROJECT_ROOT / "artifacts" / "experiment"
+    experiment_freeze_file: Path = (
+        PROJECT_ROOT / "artifacts" / "experiment" / "freeze.json"
+    )
     graphs_dir: Path = PROJECT_ROOT / "artifacts" / "graphs"
     oof_graphs_dir: Path = PROJECT_ROOT / "artifacts" / "graphs" / "oof"
     full_train_graphs_dir: Path = PROJECT_ROOT / "artifacts" / "graphs" / "full_train"

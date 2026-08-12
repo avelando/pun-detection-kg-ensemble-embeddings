@@ -1,13 +1,12 @@
 import numpy as np
 
 from pun_detection.config import DATA, EXPERIMENT
-from pun_detection.data import load_dataset_splits
+from pun_detection.data import load_train_split
 from pun_detection.oof import create_oof_splits
 
 
 def main():
-    splits = load_dataset_splits()
-    train = splits.train
+    train = load_train_split()
 
     oof_splits = create_oof_splits(train)
 

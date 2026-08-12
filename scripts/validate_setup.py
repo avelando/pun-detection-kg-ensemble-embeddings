@@ -1,7 +1,10 @@
 from collections import Counter
 
 from pun_detection.config import DATA, EXPERIMENT, GRAPHS
-from pun_detection.data import load_dataset_splits
+from pun_detection.data import (
+    load_development_splits,
+    test_access_is_unlocked,
+)
 
 
 def print_split_summary(name, dataframe):
@@ -18,17 +21,24 @@ def print_split_summary(name, dataframe):
 
 
 def main():
-    splits = load_dataset_splits()
+    splits = load_development_splits()
 
     print_split_summary("train", splits.train)
     print_split_summary("validation", splits.validation)
-    print_split_summary("test", splits.test)
 
     print(f"oof_folds={EXPERIMENT.oof_folds}")
     print(f"primary_seed={EXPERIMENT.primary_seed}")
     print(f"seeds={EXPERIMENT.seeds}")
     print(f"primary_metric={EXPERIMENT.primary_metric}")
     print(f"graph_svd_dimensions={GRAPHS.svd_dimensions}")
+    
+    test_access = (
+        "unlocked"
+        if test_access_is_unlocked()
+        else "locked"
+    )
+
+    print(f"test_access={test_access}")
     print("Dataset setup is valid")
 
 

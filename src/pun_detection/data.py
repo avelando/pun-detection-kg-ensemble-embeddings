@@ -12,6 +12,12 @@ PAIR_ID_PATTERN = re.compile(r"^(?P<pair_id>.+)\.(?P<variant>[HN])$")
 
 
 @dataclass(frozen=True)
+class DevelopmentSplits:
+    train: pd.DataFrame
+    validation: pd.DataFrame
+
+
+@dataclass(frozen=True)
 class DatasetSplits:
     train: pd.DataFrame
     validation: pd.DataFrame
@@ -129,19 +135,54 @@ def validate_split(
     return validated
 
 
-def validate_instance_boundaries(splits: DatasetSplits) -> None:
-    train_ids = set(splits.train[DATA.id_column])
-    validation_ids = set(splits.validation[DATA.id_column])
-    test_ids = set(splits.test[DATA.id_column])
+def validate_instance_boundaries(
+    named_splits: dict[str, pd.DataFrame],
+) -> None:
+    split_names = list(named_splits)
 
-    if train_ids.intersection(validation_ids):
-        raise ValueError("Train and validation contain repeated instance IDs")
+    for left_index, left_name in enumerate(split_names):
+        left_ids = set(
+            named_splits[left_name][DATA.id_column]
+        )
 
-    if train_ids.intersection(test_ids):
-        raise ValueError("Train and test contain repeated instance IDs")
+        for right_name in split_names[left_index + 1 :]:
+            right_ids = set(
+                named_splits[right_name][DATA.id_column]
+            )
 
-    if validation_ids.intersection(test_ids):
-        raise ValueError("Validation and test contain repeated instance IDs")
+            if left_ids.intersection(right_ids):
+                raise ValueError(
+                    f"{left_name} and {right_name} "
+                    "contain repeated instance IDs"
+                )
+
+
+def test_access_is_unlocked() -> bool:
+    freeze_path = PATHS.experiment_freeze_file
+
+    if not freeze_path.is_file():
+        return False
+
+    try:
+        with freeze_path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+            state = json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    return state.get("status") == "frozen"
+
+
+def require_test_access() -> None:
+    if test_access_is_unlocked():
+        return
+
+    raise RuntimeError(
+        "Test split is locked until the experimental "
+        "configuration is frozen"
+    )
 
 
 def load_train_split() -> pd.DataFrame:
@@ -160,7 +201,25 @@ def load_validation_split() -> pd.DataFrame:
     )
 
 
+def load_development_splits() -> DevelopmentSplits:
+    splits = DevelopmentSplits(
+        train=load_train_split(),
+        validation=load_validation_split(),
+    )
+
+    validate_instance_boundaries(
+        {
+            "train": splits.train,
+            "validation": splits.validation,
+        }
+    )
+
+    return splits
+
+
 def load_test_split() -> pd.DataFrame:
+    require_test_access()
+
     return validate_split(
         load_jsonl(PATHS.test_file),
         "test",
@@ -175,6 +234,12 @@ def load_dataset_splits() -> DatasetSplits:
         test=load_test_split(),
     )
 
-    validate_instance_boundaries(splits)
+    validate_instance_boundaries(
+        {
+            "train": splits.train,
+            "validation": splits.validation,
+            "test": splits.test,
+        }
+    )
 
     return splits

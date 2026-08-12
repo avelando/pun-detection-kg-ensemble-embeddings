@@ -1,4 +1,4 @@
-from pun_detection.data import load_dataset_splits
+from pun_detection.data import load_train_split
 from pun_detection.graphs.builders import build_graph_set
 from pun_detection.graphs.io import graph_statistics
 
@@ -32,10 +32,10 @@ EXPECTED = {
 
 
 def main():
-    splits = load_dataset_splits()
+    train = load_train_split()
 
     graph_set = build_graph_set(
-        splits.train
+        train
     )
 
     for name, graph in graph_set.as_dict().items():

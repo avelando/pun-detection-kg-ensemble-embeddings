@@ -1,7 +1,7 @@
 import numpy as np
 
 from pun_detection.config import DATA, GRAPHS
-from pun_detection.data import load_dataset_splits
+from pun_detection.data import load_development_splits
 from pun_detection.graphs.builders import build_graph_set
 from pun_detection.graphs.features import (
     fit_graph_encoder_set,
@@ -61,7 +61,7 @@ def validate_feature_matrix(
 
 
 def main():
-    splits = load_dataset_splits()
+    splits = load_development_splits()
 
     graph_set = build_graph_set(
         splits.train
@@ -108,11 +108,6 @@ def main():
         )
     )
 
-    test_features = transform_graph_encoder_set(
-        splits.test[DATA.text_column].tolist(),
-        encoders_a,
-    )
-
     split_features = {
         "train": (
             train_features,
@@ -121,10 +116,6 @@ def main():
         "validation": (
             validation_features,
             len(splits.validation),
-        ),
-        "test": (
-            test_features,
-            len(splits.test),
         ),
     }
 

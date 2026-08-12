@@ -1,21 +1,21 @@
 from pun_detection.config import PATHS
-from pun_detection.data import load_dataset_splits
+from pun_detection.data import load_train_split
 from pun_detection.graphs.builders import build_graph_set
 from pun_detection.graphs.io import save_graph_set
 
 
 def main():
-    splits = load_dataset_splits()
+    train = load_train_split()
 
     graph_set = build_graph_set(
-        splits.train
+        train
     )
 
     metadata = save_graph_set(
         graph_set=graph_set,
         output_dir=PATHS.full_train_graphs_dir,
         source_name="train",
-        source_dataframe=splits.train,
+        source_dataframe=train,
     )
 
     for name, statistics in metadata[
