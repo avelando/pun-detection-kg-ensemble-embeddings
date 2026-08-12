@@ -7,11 +7,13 @@ from pun_detection.base_view_cache import (
 )
 from pun_detection.base_views import (
     BASE_VIEW_NAMES,
+    select_base_view_matrix,
 )
 from pun_detection.config import (
     DATA,
     EXPERIMENT,
     PATHS,
+    STACKING,
 )
 from pun_detection.data import (
     load_development_splits,
@@ -88,8 +90,16 @@ def main():
                 "Unexpected base view column order"
             )
 
+        primary_validation = (
+            select_base_view_matrix(
+                matrices.validation,
+                STACKING.primary_views,
+            )
+        )
+
         probabilities = soft_voting_probabilities(
-            matrices.validation
+            primary_validation,
+            view_names=STACKING.primary_views,
         )
 
         overall = compute_binary_metrics(
@@ -127,7 +137,7 @@ def main():
 
         validation_matrix_fingerprint = (
             array_fingerprint(
-                matrices.validation
+                primary_validation
             )
         )
 
@@ -198,7 +208,7 @@ def main():
         "aggregation": "arithmetic_mean",
         "threshold": 0.5,
         "views": list(
-            BASE_VIEW_NAMES
+            STACKING.primary_views
         ),
         "selected_embedding_model": (
             selected_embedding_model
@@ -255,7 +265,7 @@ def main():
 
     print(
         f"views="
-        f"{','.join(BASE_VIEW_NAMES)}"
+        f"{','.join(STACKING.primary_views)}"
     )
 
     print(

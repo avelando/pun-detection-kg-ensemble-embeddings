@@ -6,12 +6,13 @@ from pun_detection.base_view_cache import (
     load_base_view_cache,
 )
 from pun_detection.base_views import (
-    BASE_VIEW_NAMES,
+    select_base_view_matrix,
 )
 from pun_detection.config import (
     DATA,
     EXPERIMENT,
     PATHS,
+    STACKING,
 )
 from pun_detection.data import (
     load_development_splits,
@@ -75,26 +76,28 @@ def main():
         DATA.label_column
     ].astype(int).to_numpy()
 
+    view_names = STACKING.primary_views
+
     per_seed = {}
 
     coefficient_values = {
         view_name: []
-        for view_name in BASE_VIEW_NAMES
+        for view_name in view_names
     }
 
     feature_mean_values = {
         view_name: []
-        for view_name in BASE_VIEW_NAMES
+        for view_name in view_names
     }
 
     feature_std_values = {
         view_name: []
-        for view_name in BASE_VIEW_NAMES
+        for view_name in view_names
     }
 
     effect_per_std_values = {
         view_name: []
-        for view_name in BASE_VIEW_NAMES
+        for view_name in view_names
     }
 
     intercept_values = []
@@ -106,12 +109,17 @@ def main():
             seed=seed,
         )
 
+        X_train = select_base_view_matrix(
+            matrices.train_oof,
+            view_names,
+        )
+
         model = fit_stacking_meta_model(
-            X=matrices.train_oof,
+            X=X_train,
             y=y_train,
             model_name=selected_model,
             seed=seed,
-            view_names=BASE_VIEW_NAMES,
+            view_names=view_names,
         )
 
         coefficients = np.asarray(
@@ -120,14 +128,14 @@ def main():
         )
 
         feature_means = np.asarray(
-            matrices.train_oof.mean(
+            X_train.mean(
                 axis=0
             ),
             dtype=np.float64,
         )
 
         feature_stds = np.asarray(
-            matrices.train_oof.std(
+            X_train.std(
                 axis=0,
                 ddof=0,
             ),
@@ -135,7 +143,7 @@ def main():
         )
 
         if coefficients.shape != (
-            len(BASE_VIEW_NAMES),
+            len(view_names),
         ):
             raise ValueError(
                 "Unexpected stacking coefficient shape"
@@ -163,7 +171,7 @@ def main():
         seed_effects_per_std = {}
 
         for index, view_name in enumerate(
-            BASE_VIEW_NAMES
+            view_names
         ):
             coefficient = float(
                 coefficients[index]
@@ -238,7 +246,7 @@ def main():
         formatted = ", ".join(
             f"{view_name}="
             f"{seed_effects_per_std[view_name]:.6f}"
-            for view_name in BASE_VIEW_NAMES
+            for view_name in view_names
         )
 
         print(
@@ -249,7 +257,7 @@ def main():
 
     summary = {}
 
-    for view_name in BASE_VIEW_NAMES:
+    for view_name in view_names:
         summary[
             view_name
         ] = {
@@ -284,7 +292,7 @@ def main():
             selected_model
         ),
         "views": list(
-            BASE_VIEW_NAMES
+            view_names
         ),
         "seeds": list(
             EXPERIMENT.seeds
@@ -320,7 +328,7 @@ def main():
 
     print()
 
-    for view_name in BASE_VIEW_NAMES:
+    for view_name in view_names:
         values = summary[
             view_name
         ]

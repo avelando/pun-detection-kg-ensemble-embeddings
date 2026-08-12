@@ -2,12 +2,18 @@ import numpy as np
 
 from pun_detection.base_views import (
     BASE_VIEW_NAMES,
+    validate_base_view_names,
 )
 
 
 def soft_voting_probabilities(
     view_matrix: np.ndarray,
+    view_names=BASE_VIEW_NAMES,
 ) -> np.ndarray:
+    view_names = validate_base_view_names(
+        view_names
+    )
+
     matrix = np.asarray(
         view_matrix,
         dtype=np.float64,
@@ -19,11 +25,11 @@ def soft_voting_probabilities(
         )
 
     if matrix.shape[1] != len(
-        BASE_VIEW_NAMES
+        view_names
     ):
         raise ValueError(
             "Soft voting input has an invalid "
-            "number of base views"
+            "number of views"
         )
 
     if not np.isfinite(

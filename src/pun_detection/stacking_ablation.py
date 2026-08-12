@@ -1,13 +1,12 @@
 from pun_detection.base_views import (
-    BASE_VIEW_NAMES,
     validate_base_view_names,
+)
+from pun_detection.config import (
+    STACKING,
 )
 
 
 STACKING_ABLATIONS = {
-    "tfidf_only": (
-        "tfidf",
-    ),
     "selected_embedding_only": (
         "selected_embedding",
     ),
@@ -25,10 +24,6 @@ STACKING_ABLATIONS = {
         "ppmi",
         "pun_context",
     ),
-    "tfidf_selected_embedding": (
-        "tfidf",
-        "selected_embedding",
-    ),
     "selected_embedding_cooccurrence": (
         "selected_embedding",
         "cooccurrence",
@@ -41,19 +36,24 @@ STACKING_ABLATIONS = {
         "selected_embedding",
         "pun_context",
     ),
-    "selected_embedding_all_graphs": (
+    "without_cooccurrence": (
+        "selected_embedding",
+        "ppmi",
+        "pun_context",
+    ),
+    "without_ppmi": (
+        "selected_embedding",
+        "cooccurrence",
+        "pun_context",
+    ),
+    "without_pun_context": (
         "selected_embedding",
         "cooccurrence",
         "ppmi",
-        "pun_context",
     ),
-    "tfidf_all_graphs": (
-        "tfidf",
-        "cooccurrence",
-        "ppmi",
-        "pun_context",
+    "all_primary_views": (
+        STACKING.primary_views
     ),
-    "all_views": BASE_VIEW_NAMES,
 }
 
 
@@ -63,6 +63,10 @@ def validate_stacking_ablations() -> None:
             "Stacking ablations cannot be empty"
         )
 
+    primary_view_set = set(
+        STACKING.primary_views
+    )
+
     for configuration_name, view_names in (
         STACKING_ABLATIONS.items()
     ):
@@ -71,14 +75,23 @@ def validate_stacking_ablations() -> None:
                 "Stacking ablation name cannot be empty"
             )
 
-        validate_base_view_names(
+        normalized = validate_base_view_names(
             view_names
         )
 
+        if not set(
+            normalized
+        ).issubset(
+            primary_view_set
+        ):
+            raise ValueError(
+                "Stacking ablation contains "
+                "a non-primary view"
+            )
+
     if STACKING_ABLATIONS[
-        "all_views"
-    ] != BASE_VIEW_NAMES:
+        "all_primary_views"
+    ] != STACKING.primary_views:
         raise ValueError(
-            "All-views ablation must contain "
-            "all base views"
+            "All-primary-views ablation is invalid"
         )

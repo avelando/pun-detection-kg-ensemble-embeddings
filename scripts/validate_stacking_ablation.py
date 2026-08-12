@@ -140,7 +140,7 @@ def main():
     }
 
     full_runs = configurations[
-        "all_views"
+        "all_primary_views"
     ][
         "per_seed"
     ]
@@ -161,7 +161,7 @@ def main():
             != expected["macro_f1"]
         ):
             raise ValueError(
-                f"All-views Macro-F1 mismatch "
+                f"All-primary-views Macro-F1 mismatch "
                 f"for seed {seed}"
             )
 
@@ -170,7 +170,7 @@ def main():
             != expected["accuracy"]
         ):
             raise ValueError(
-                f"All-views accuracy mismatch "
+                f"All-primary-views accuracy mismatch "
                 f"for seed {seed}"
             )
 
@@ -185,10 +185,10 @@ def main():
     )
 
     print(
-        "All-views results reproduce "
+        "All-primary-views results reproduce "
         "the selected stacking experiment"
     )
-
+    
     print(
         "Stacking ablation is valid"
     )
