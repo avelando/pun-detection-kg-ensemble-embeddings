@@ -6,6 +6,11 @@ GRAPH_TOKEN_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 
+GRAPH_DOCUMENT_PATTERN = re.compile(
+    r"[A-Za-zÀ-ÖØ-öø-ÿ]+",
+    flags=re.UNICODE,
+)
+
 
 def normalize_graph_token(token: str) -> str:
     normalized = str(token).lower().strip()
@@ -34,3 +39,10 @@ def extract_pun_tokens(tokens, token_labels) -> list[str]:
             pun_tokens.append(normalized)
 
     return pun_tokens
+
+
+def tokenize_graph_document(text: str) -> list[str]:
+    return [
+        token.lower()
+        for token in GRAPH_DOCUMENT_PATTERN.findall(str(text))
+    ]

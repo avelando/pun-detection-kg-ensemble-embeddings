@@ -172,5 +172,3 @@ def load_dataset_splits() -> DatasetSplits:
     validate_instance_boundaries(splits)
 
     return splits
-
-    
