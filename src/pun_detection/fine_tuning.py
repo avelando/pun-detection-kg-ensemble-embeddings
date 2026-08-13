@@ -1,5 +1,11 @@
+import hashlib
+import json
 import os
+import platform
 import random
+import sys
+from dataclasses import asdict
+from pathlib import Path
 
 os.environ.setdefault(
     "CUBLAS_WORKSPACE_CONFIG",
@@ -8,6 +14,7 @@ os.environ.setdefault(
 
 import numpy as np
 import torch
+import transformers
 from huggingface_hub import hf_hub_download
 from torch.optim import AdamW
 from torch.utils.data import (
@@ -23,6 +30,9 @@ from transformers import (
 from pun_detection.config import (
     DATA,
     FINE_TUNING,
+)
+from pun_detection.fingerprints import (
+    supervised_dataset_fingerprint,
 )
 
 
@@ -591,3 +601,200 @@ def predict_fine_tuning_probabilities(
         )
 
     return result
+
+
+def clear_fine_tuning_device_cache() -> None:
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def file_sha256(
+    path: Path,
+) -> str:
+    digest = hashlib.sha256()
+
+    with path.open(
+        "rb"
+    ) as file:
+        for block in iter(
+            lambda: file.read(
+                1024 * 1024
+            ),
+            b"",
+        ):
+            digest.update(
+                block
+            )
+
+    return digest.hexdigest()
+
+
+def checkpoint_sha256(
+    checkpoint_dir: Path,
+) -> dict[str, str]:
+    checkpoint_dir = Path(
+        checkpoint_dir
+    )
+
+    if not checkpoint_dir.is_dir():
+        raise FileNotFoundError(
+            "Fine-tuning checkpoint directory "
+            f"does not exist: {checkpoint_dir}"
+        )
+
+    checkpoint_files = sorted(
+        path
+        for path in checkpoint_dir.rglob("*")
+        if (
+            path.is_file()
+            and path.name
+            != "training_metadata.json"
+        )
+    )
+
+    if not checkpoint_files:
+        raise ValueError(
+            "Fine-tuning checkpoint "
+            "contains no files"
+        )
+
+    return {
+        str(
+            path.relative_to(
+                checkpoint_dir
+            )
+        ): file_sha256(
+            path
+        )
+        for path in checkpoint_files
+    }
+
+
+def save_fine_tuning_checkpoint(
+    model,
+    tokenizer,
+    output_dir: Path,
+    seed: int,
+    train_dataframe,
+    validation_dataframe,
+    training_history: dict,
+) -> dict:
+    output_dir = Path(
+        output_dir
+    )
+
+    if output_dir.exists():
+        if not output_dir.is_dir():
+            raise FileExistsError(
+                "Fine-tuning checkpoint target "
+                f"is not a directory: {output_dir}"
+            )
+
+        if any(
+            output_dir.iterdir()
+        ):
+            raise FileExistsError(
+                "Fine-tuning checkpoint "
+                f"already exists: {output_dir}"
+            )
+
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    model.save_pretrained(
+        output_dir,
+        safe_serialization=True,
+    )
+
+    tokenizer.save_pretrained(
+        output_dir
+    )
+
+    checkpoint_hashes = (
+        checkpoint_sha256(
+            output_dir
+        )
+    )
+
+    runtime = {
+        "python": (
+            sys.version.split()[0]
+        ),
+        "platform": (
+            platform.platform()
+        ),
+        "numpy": np.__version__,
+        "torch": torch.__version__,
+        "torch_cuda": torch.version.cuda,
+        "transformers": (
+            transformers.__version__
+        ),
+    }
+
+    if torch.cuda.is_available():
+        runtime[
+            "cuda_device"
+        ] = torch.cuda.get_device_name(
+            torch.cuda.current_device()
+        )
+
+    metadata = {
+        "model_id": (
+            FINE_TUNING.model_id
+        ),
+        "model_revision": (
+            FINE_TUNING.revision
+        ),
+        "seed": seed,
+        "configuration": asdict(
+            FINE_TUNING
+        ),
+        "checkpoint_policy": (
+            "final_epoch_only"
+        ),
+        "train_dataset_fingerprint": (
+            supervised_dataset_fingerprint(
+                train_dataframe
+            )
+        ),
+        "validation_dataset_fingerprint": (
+            supervised_dataset_fingerprint(
+                validation_dataframe
+            )
+        ),
+        "training": training_history,
+        "runtime": runtime,
+        "checkpoint_sha256": (
+            checkpoint_hashes
+        ),
+    }
+
+    metadata_path = (
+        output_dir
+        / "training_metadata.json"
+    )
+
+    temporary_metadata_path = (
+        output_dir
+        / "training_metadata.json.tmp"
+    )
+
+    with temporary_metadata_path.open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            metadata,
+            file,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+
+    temporary_metadata_path.replace(
+        metadata_path
+    )
+
+    return metadata
