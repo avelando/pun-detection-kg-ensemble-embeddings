@@ -19,6 +19,7 @@ def generate_tfidf_oof_predictions(
 
     oof_splits = create_oof_splits(
         dataframe=train,
+        seed=seed,
     )
 
     for split in oof_splits:

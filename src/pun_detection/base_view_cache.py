@@ -165,9 +165,7 @@ def build_base_view_context(
         "seed": seed,
         "oof": {
             "folds": EXPERIMENT.oof_folds,
-            "split_seed": (
-                EXPERIMENT.oof_split_seed
-            ),
+            "split_seed": seed,
         },
         "columns": list(
             BASE_VIEW_NAMES

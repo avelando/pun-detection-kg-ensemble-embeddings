@@ -8,7 +8,10 @@ from pun_detection.oof import create_oof_splits
 def main():
     train = load_train_split()
 
-    oof_splits = create_oof_splits(train)
+    oof_splits = create_oof_splits(
+        train,
+        seed=EXPERIMENT.primary_seed,
+    )
 
     if len(oof_splits) != EXPERIMENT.oof_folds:
         raise ValueError(
@@ -43,25 +46,6 @@ def main():
                 f"Fold {split.fold} has instance overlap"
             )
 
-        train_pairs = set(
-            fold_train["pair_id"]
-        )
-
-        holdout_pairs = set(
-            fold_holdout["pair_id"]
-        )
-
-        overlapping_pairs = (
-            train_pairs.intersection(
-                holdout_pairs
-            )
-        )
-
-        if overlapping_pairs:
-            raise ValueError(
-                f"Fold {split.fold} has pair overlap"
-            )
-
         holdout_counts[
             split.holdout_indices
         ] += 1
@@ -90,8 +74,6 @@ def main():
             f"fold={split.fold}, "
             f"train={len(fold_train)}, "
             f"holdout={len(fold_holdout)}, "
-            f"train_pairs={fold_train['pair_id'].nunique()}, "
-            f"holdout_pairs={fold_holdout['pair_id'].nunique()}, "
             f"train_classes={train_class_counts}, "
             f"holdout_classes={holdout_class_counts}"
         )

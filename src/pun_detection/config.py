@@ -71,7 +71,6 @@ class GraphConfig:
 @dataclass(frozen=True)
 class ExperimentConfig:
     oof_folds: int = 5
-    oof_split_seed: int = 40
     primary_seed: int = 40
     seeds: tuple[int, ...] = (13, 21, 40, 42, 73)
     primary_metric: str = "macro_f1"

@@ -1,3 +1,4 @@
+from pun_detection.config import EXPERIMENT
 from pun_detection.data import load_train_split
 from pun_detection.graphs.builders import build_graph_set
 from pun_detection.graphs.features import (
@@ -11,7 +12,10 @@ from pun_detection.oof import create_oof_splits
 def main():
     train = load_train_split()
 
-    oof_splits = create_oof_splits(train)
+    oof_splits = create_oof_splits(
+        train,
+        seed=EXPERIMENT.primary_seed,
+    )
 
     for split in oof_splits:
         fold_train = train.iloc[

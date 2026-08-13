@@ -8,8 +8,15 @@ from pun_detection.oof import create_oof_splits
 def main():
     train = load_train_split()
 
-    first = create_oof_splits(train)
-    second = create_oof_splits(train)
+    first = create_oof_splits(
+        train,
+        seed=EXPERIMENT.primary_seed,
+    )
+
+    second = create_oof_splits(
+        train,
+        seed=EXPERIMENT.primary_seed,
+    )
 
     if len(first) != EXPERIMENT.oof_folds:
         raise ValueError(
@@ -54,7 +61,7 @@ def main():
 
     print(
         f"folds={EXPERIMENT.oof_folds}, "
-        f"split_seed={EXPERIMENT.oof_split_seed}, "
+        f"seed={EXPERIMENT.primary_seed}, "
         f"instances={len(train)}, "
         f"coverage_valid=True"
     )
